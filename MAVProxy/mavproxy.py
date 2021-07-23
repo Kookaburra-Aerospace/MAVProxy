@@ -34,6 +34,7 @@ from MAVProxy.modules.lib import dumpstacks
 from MAVProxy.modules.lib import mp_substitute
 from MAVProxy.modules.lib import multiproc
 from MAVProxy.modules.mavproxy_link import preferred_ports
+from MAVProxy.constants import *
 
 # adding all this allows pyinstaller to build a working windows executable
 # note that using --hidden-import does not work for these modules
@@ -68,6 +69,8 @@ if __name__ == '__main__':
 
 #The MAVLink version being used (None, "1.0", "2.0")
 mavversion = None
+
+print("Minimal change with this print statement")
 
 class MPStatus(object):
     '''hold status information about the mavproxy'''
@@ -678,9 +681,6 @@ def process_master(m):
     if (mpstate.settings.compdebug & 1) != 0:
         return
 
-    if mpstate.logqueue_raw:
-        mpstate.logqueue_raw.put(bytearray(s))
-
     if mpstate.status.setup_mode:
         if mpstate.system == 'Windows':
            # strip nsh ansi codes
@@ -732,8 +732,9 @@ def process_mavlink(slave):
             mbuf = m.get_msgbuf()
             mpstate.master().write(mbuf)
             if mpstate.logqueue:
-                usec = int(time.time() * 1.0e6)
-                mpstate.logqueue.put(bytearray(struct.pack('>Q', usec) + m.get_msgbuf()))
+                if m.get_type() not in LOG_MSG_TYPE_FILTER:
+                    usec = int(time.time() * 1.0e6)
+                    mpstate.logqueue.put(bytearray(struct.pack('>Q', usec) + m.get_msgbuf()))
             if mpstate.status.watch:
                 for msg_type in mpstate.status.watch:
                     if fnmatch.fnmatch(m.get_type().upper(), msg_type.upper()):
@@ -757,20 +758,18 @@ def mkdir_p(dir):
 def log_writer():
     '''log writing thread'''
     while True:
-        mpstate.logfile_raw.write(bytearray(mpstate.logqueue_raw.get()))
         timeout = time.time() + 10
-        while not mpstate.logqueue_raw.empty() and time.time() < timeout:
-            mpstate.logfile_raw.write(mpstate.logqueue_raw.get())
         while not mpstate.logqueue.empty() and time.time() < timeout:
             mpstate.logfile.write(mpstate.logqueue.get())
         if mpstate.settings.flushlogs or time.time() >= timeout:
             mpstate.logfile.flush()
-            mpstate.logfile_raw.flush()
+            
+        time.sleep(0.5)
 
 # If state_basedir is NOT set then paths for logs and aircraft
 # directories are relative to mavproxy's cwd
 def log_paths():
-    '''Returns tuple (logdir, telemetry_log_filepath, raw_telemetry_log_filepath)'''
+    '''Returns tuple (logdir, telemetry_log_filepath)'''
     if opts.aircraft is not None:
         dirname = ""
         if opts.mission is not None:
@@ -805,11 +804,10 @@ def log_paths():
 
     mkdir_p(logdir)
     return (logdir,
-            os.path.join(logdir, logname),
-            os.path.join(logdir, logname + '.raw'))
+            os.path.join(logdir, logname))
 
 
-def open_telemetry_logs(logpath_telem, logpath_telem_raw):
+def open_telemetry_logs(logpath_telem):
     '''open log files'''
     if opts.append_log or opts.continue_mode:
         mode = 'ab'
@@ -818,7 +816,6 @@ def open_telemetry_logs(logpath_telem, logpath_telem_raw):
 
     try:
         mpstate.logfile = open(logpath_telem, mode=mode)
-        mpstate.logfile_raw = open(logpath_telem_raw, mode=mode)
         print("Log Directory: %s" % mpstate.status.logdir)
         print("Telemetry log: %s" % logpath_telem)
 
@@ -1192,7 +1189,6 @@ if __name__ == '__main__':
     mpstate.continue_mode = opts.continue_mode
     # queues for logging
     mpstate.logqueue = Queue.Queue()
-    mpstate.logqueue_raw = Queue.Queue()
 
 
     if opts.speech:
@@ -1287,7 +1283,7 @@ if __name__ == '__main__':
         mpstate.rl.set_prompt("")
 
     # call this early so that logdir is setup based on --aircraft
-    (mpstate.status.logdir, logpath_telem, logpath_telem_raw) = log_paths()
+    (mpstate.status.logdir, logpath_telem) = log_paths()
 
     for module in opts.load_module:
         modlist = module.split(',')
@@ -1340,7 +1336,7 @@ if __name__ == '__main__':
         yappi.start()
 
     # log all packets from the master, for later replay
-    open_telemetry_logs(logpath_telem, logpath_telem_raw)
+    open_telemetry_logs(logpath_telem)
 
     # run main loop as a thread
     mpstate.status.thread = threading.Thread(target=main_loop, name='main_loop')
