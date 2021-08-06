@@ -1,7 +1,9 @@
 from setuptools import setup
 import os, platform
 
-version = "1.8.19"
+version = '0.0.0'
+if "VERSION" in os.environ:
+    version = os.getenv('VERSION')
 
 def package_files(directory):
     paths = []
@@ -10,7 +12,7 @@ def package_files(directory):
             paths.append(os.path.join('..', path, filename))
     return paths
 
-package_data = ['modules/mavproxy_map/data/*.jpg', 
+package_data = ['modules/mavproxy_map/data/*.jpg',
                 'modules/mavproxy_map/data/*.png',
                 'modules/mavproxy_mmap/mmap_app/*',
                 'modules/mavproxy_joystick/joysticks/*.yml',
