@@ -108,7 +108,7 @@ release:
 
   script:
     - pip3 install s3pypi
-    - s3pypi --bucket device-management.tools.swoop.aero --secret firmware/pypi
+    - s3pypi --bucket device-management.tools.swoop.aero --secret firmware/pypi --bare
     - aws s3 cp ci_metadata.json $BASE_FILE_NAME/$BUILDNAME.config
     - curl --location --output /usr/local/bin/release-cli "https://release-cli-downloads.s3.amazonaws.com/latest/release-cli-linux-amd64"
     - chmod +x /usr/local/bin/release-cli
