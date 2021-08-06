@@ -78,6 +78,7 @@ setup:
     reports:
       dotenv: variables.env
 
+
 build:
   stage: build
   image: quay.io/pypa/manylinux1_x86_64
