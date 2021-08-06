@@ -107,8 +107,8 @@ release:
     BASE_FILE_NAME: s3://device-management.tools.swoop.aero/firmware/mavproxy/$CI_COMMIT_BRANCH
 
   script:
-    - pip3 install s3pypi
-    - s3pypi --bucket device-management.tools.swoop.aero --secret firmware/pypi --bare
+    - pip install s3pypi==1.0.0rc3
+    - s3pypi wheels/* --bucket device-management.tools.swoop.aero --prefix firmware/pypi
     - aws s3 cp ci_metadata.json $BASE_FILE_NAME/$BUILDNAME.config
     - curl --location --output /usr/local/bin/release-cli "https://release-cli-downloads.s3.amazonaws.com/latest/release-cli-linux-amd64"
     - chmod +x /usr/local/bin/release-cli
