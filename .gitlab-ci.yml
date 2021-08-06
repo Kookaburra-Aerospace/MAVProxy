@@ -90,12 +90,12 @@ build:
 
   script:
     - export VERSION=$MAJOR.$MINOR.$PATCH
-    - /opt/python/cp38-cp38/bin/pip wheel .
+    - /opt/python/cp38-cp38/bin/pip wheel --wheel-dir=wheels/ .
 
   artifacts:
     name: "mavproxy_$VERSION_$CI_COMMIT_SHORT_SHA"
     paths:
-      - "$BINARY"
+      - "wheels/*"
 
 # push the binaries and metadata to s3 bucket and create a tag for cross referencing
 release:
@@ -107,7 +107,8 @@ release:
     BASE_FILE_NAME: s3://device-management.tools.swoop.aero/firmware/mavproxy/$CI_COMMIT_BRANCH
 
   script:
-    - aws s3 cp $BINARY $BASE_FILE_NAME/$BINARY
+    - pip3 install s3pypi
+    - s3pypi --bucket device-management.tools.swoop.aero --secret firmware/pypi --dist-path wheels/ --no-sdist
     - aws s3 cp ci_metadata.json $BASE_FILE_NAME/$BUILDNAME.config
     - curl --location --output /usr/local/bin/release-cli "https://release-cli-downloads.s3.amazonaws.com/latest/release-cli-linux-amd64"
     - chmod +x /usr/local/bin/release-cli
